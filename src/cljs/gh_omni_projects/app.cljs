@@ -1,16 +1,23 @@
 (ns gh-omni-projects.app
-		(:require-macros [cljs.core.async.macros :refer [go]])
-    (:require [rum.core :as rum]
-							[cljs.core.async :refer [<!]]
-							[clojure.data :refer [diff]]
-							[gh-omni-projects.api :as api]))
+	(:refer-clojure :exclude [print])
+	(:require-macros [cljs.core.async.macros :refer [go]])
+	(:require [rum.core :as rum]
+						[cljs.core.async :refer [<!]]
+						[clojure.data :refer [diff]]
+						[gh-omni-projects.api :as api]))
 
-(enable-console-print!)
+(defn print [& args]
+	(.log js/console args))
 
 (defonce state (atom {:projects []
+											:projects/by-id {}
+											:columns/by-id {}
 											:columns/by-project-id {}
 											:columns/by-name {}
-											:loading true}))
+											:loading false}))
+;; selectors
+(defn get-projects-list [state]
+	(-> state :projects/by-id vals))
 
 (rum/defc columns-list-item [column]
 	[:li (:name column)])
@@ -27,7 +34,7 @@
 (rum/defc projects [state]
 	[:div
    [:h1 "Projects"]
-	 (projects-list (:projects state) (:columns/by-project-id state))])
+	 (projects-list (get-projects-list state) (:columns/by-project-id state))])
 (rum/defc column-list-item [by-name]
 	(print "column-list-item: " by-name)
 	[:li (first by-name)])
@@ -54,11 +61,35 @@
 							 (if add (print  "+ " (second diff))))
 						 (render new-state)))
 
-;; (go (let [response (<! (api/getProjectsForRepo "spredfast" "mobile-conversations"))]
-;; 			(print (:status response))
-;; 			(swap! state assoc :loading false)
-;; 			(swap! state assoc :projects (:body response))))
+(defn index-by [key coll]
+	(reduce
+		(fn [v x]
+			(assoc v (key x) x))
+		{}
+		coll))
 
+(defn loadProjects [state]
+	(go (swap! state assoc :loading true)
+			(let [response (<! (api/getProjectsForRepo "spredfast" "mobile-conversations"))]
+				(swap! state assoc :loading false)
+				(swap! state assoc :projects/by-id (index-by :id (:body response))))))
+
+(defn loadColumnsForProject [state projectId]
+	(go (let [response (<! (api/getColumnsForProject projectId))
+						columns (:body response)]
+				(doall (map (fn [column]
+							(swap! state assoc-in [:columns/by-id (:id column)] column))
+						 columns))
+				(swap! state assoc-in
+							 [:columns/by-project-id projectId]
+							 columns))))
+
+(defn loadColumnsForProjects [state]
+	(doall (map
+					 (fn [projectId]
+						 (print projectId)
+						 (loadColumnsForProject state projectId))
+					 (doall (-> @state :projects/by-id keys)))))
 ;; (doall
 ;; 	(map
 ;; 		(fn [project]
