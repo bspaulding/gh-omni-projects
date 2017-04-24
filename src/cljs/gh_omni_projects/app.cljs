@@ -12,6 +12,7 @@
 
 (defonce state (atom {:projects []
 											:projects/by-id {}
+											:cards/by-id {}
 											:columns/by-id {}
 											:columns/by-project-id {}
 											:columns/by-name {}

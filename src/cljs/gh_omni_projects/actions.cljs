@@ -1,6 +1,7 @@
 (ns gh-omni-projects.actions
 	(:require-macros [cljs.core.async.macros :refer [go]])
-	(:require [gh-omni-projects.api :as api]))
+	(:require [gh-omni-projects.api :as api]
+						[gh-omni-projects.selectors :refer [get-issues]]))
 
 (defn index-by [key coll]
 	(reduce
@@ -28,38 +29,34 @@
 (defn loadColumnsForProjects [state]
 	(doall (map
 					 (fn [projectId]
-						 (print projectId)
 						 (loadColumnsForProject state projectId))
 					 (doall (-> @state :projects/by-id keys)))))
-;; (doall
-;; 	(map
-;; 		(fn [project]
-;; 			(let [projectId (:id project)]
-;; 				(print "getting columns for " projectId)
-;; 				(go (let [response (<! (api/getColumnsForProject projectId))]
-;; 							 (swap! state assoc-in [:columns/by-project-id projectId] (:body response))))))
-;; 		(:projects @state)))
-;; (print (:columns/by-project-id @state))
 
-;; (def columns-v (reduce into [] (map second (:columns/by-project-id @state))))
-;; (def columns-by-name
-;; 	(reduce
-;; 		(fn [by-name column]
-;; 			(let [name (:name column)]
-;; 				(update by-name name (fn [cs] (conj (or cs []) (:id column))))))
-;; 		(array-map)
-;; 		columns-v))
-;; (print columns-by-name)
-;; (swap! state assoc :columns/by-name columns-by-name)
+(defn loadCardsForColumn [state columnId]
+	(swap! state assoc :loading true)
+	(go (let [response (<! (api/getCardsForColumn columnId))
+						cards (:body response)
+						cards-by-id (index-by :id cards)]
+				(swap! state update-in [:cards/by-id]
+							 (fn [current] (merge current cards-by-id)))
+				(swap! state assoc :loading false))))
 
-;; (def columnId 822867)
-;; (go (let [response (<! (api/getCardsForColumn columnId))]
-;; 			(print (:body response))
-;; 			(def cards-by-id
-;; 				(reduce
-;; 					(fn [by-id card] (assoc by-id (:id card) card))
-;; 					{}
-;; 					(:body response)))
-;; 			()
-;; 			(swap! state assoc :cards/by-id cards-by-id)))
+(defn loadCardsForColumns [state]
+	(doall (map
+					 (fn [columnId]
+						 (loadCardsForColumn state columnId))
+					 (doall (-> @state :columns/by-id keys)))))
+
+(defn loadIssueForCard [state cardId]
+	(go (let [card (get (:cards/by-id @state) cardId)
+						response (<! (api/getIssueForCard card))
+						issue (:body response)]
+				(js/console.log card)
+				(swap! state assoc-in [:cards/by-id cardId :issue] issue))))
+
+(defn loadIssuesForCards [state]
+	(doall (map
+					 (fn [cardId]
+						 (loadIssueForCard state cardId))
+					 (-> @state get-issues keys))))
 

@@ -29,6 +29,12 @@
 						 :basic-auth {:username "bspaulding" :password token}
 						 :headers {"Accept" "application/vnd.github.inertia-preview+json"}}))
 
+(defn getIssueForCard [card]
+	(http/get (:content_url card)
+						{:with-credentials? false
+						 :basic-auth {:username "bspaulding" :password token}
+						 :headers {"Accept" "application/vnd.github.inertia-preview+json"}}))
+
 ;; (go (let [response (<! (http/get "https://api.github.com/users"
 ;; 																 {:with-credentials? false
 ;; 																	:query-params {"since" 135}}))]

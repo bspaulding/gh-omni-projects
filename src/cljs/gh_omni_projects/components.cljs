@@ -1,7 +1,8 @@
 (ns gh-omni-projects.components
 	(:require [rum.core :as rum]
 						[gh-omni-projects.selectors :refer [get-projects-list
-																								get-columns-list]]))
+																								get-columns-list
+																								get-cards-list]]))
 
 (rum/defc columns-list-item [column]
 	[:li (:name column)])
@@ -25,9 +26,17 @@
 	[:div
 		[:h1 "Columns"]
 		[:ul (map column-list-item (get-columns-list state))]])
+(rum/defc card-list-item < {:key-fn :id} [card]
+	[:li (or (:note card)
+					 (-> card :issue :title))])
+(rum/defc cards [state]
+	[:div
+		[:h1 "Cards"]
+		[:ul (map card-list-item (get-cards-list state))]])
 (rum/defc app [state]
   [:div
 	 [:p (if (:loading state) "Loading...")]
+	 (cards state)
 	 (columns state)
 	 (projects state)])
 
