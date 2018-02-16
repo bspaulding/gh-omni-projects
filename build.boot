@@ -12,6 +12,7 @@
                  [powerlaces/boot-cljs-devtools "0.2.0"  :scope "test"]
                  [org.clojure/clojurescript "1.9.293"]
                  [cljs-http "0.1.42"]
+								 [proto-repl "0.3.1"]
                  [rum "0.10.7"]])
 
 (require
@@ -50,5 +51,3 @@
   []
   (comp (development)
         (run)))
-
-
